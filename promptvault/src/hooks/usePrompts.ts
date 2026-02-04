@@ -2,6 +2,26 @@ import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { Prompt, NewPrompt, UpdatePrompt } from '../types';
 
+type PromptRaw = Omit<Prompt, 'tags'> & { tags: string | string[] };
+
+const normalizeTags = (value: PromptRaw['tags']): string[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const normalizePrompt = (prompt: PromptRaw): Prompt => ({
+  ...prompt,
+  tags: normalizeTags(prompt.tags),
+});
+
 export function usePrompts() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -10,11 +30,11 @@ export function usePrompts() {
   const fetchPrompts = useCallback(async (modelFilter?: string, collectionId?: number) => {
     try {
       setLoading(true);
-      const result = await invoke<Prompt[]>('get_all_prompts', {
+      const result = await invoke<PromptRaw[]>('get_all_prompts', {
         filter: modelFilter || null,
         collection_id: collectionId || null,
       });
-      setPrompts(result);
+      setPrompts(result.map(normalizePrompt));
     } catch (error) {
       console.error('Error fetching prompts:', error);
     } finally {
@@ -24,7 +44,8 @@ export function usePrompts() {
 
   const getPromptById = useCallback(async (id: number) => {
     try {
-      return await invoke<Prompt>('get_prompt_by_id', { id });
+      const result = await invoke<PromptRaw>('get_prompt_by_id', { id });
+      return normalizePrompt(result);
     } catch (error) {
       console.error('Error fetching prompt:', error);
       return null;
@@ -33,7 +54,7 @@ export function usePrompts() {
 
   const createPrompt = useCallback(async (data: NewPrompt & { image_data?: number[]; filename?: string }) => {
     try {
-      const result = await invoke<Prompt>('create_prompt', {
+      const result = await invoke<PromptRaw>('create_prompt', {
         prompt: {
           title: data.title,
           prompt_text: data.prompt_text,
@@ -50,8 +71,9 @@ export function usePrompts() {
         image_data: data.image_data || null,
         filename: data.filename || null,
       });
-      setPrompts(prev => [result, ...prev]);
-      return result;
+      const normalized = normalizePrompt(result);
+      setPrompts(prev => [normalized, ...prev]);
+      return normalized;
     } catch (error) {
       console.error('Error creating prompt:', error);
       throw error;
@@ -60,9 +82,10 @@ export function usePrompts() {
 
   const updatePrompt = useCallback(async (id: number, data: UpdatePrompt) => {
     try {
-      const result = await invoke<Prompt>('update_prompt', { id, prompt: data });
-      setPrompts(prev => prev.map(p => p.id === id ? result : p));
-      return result;
+      const result = await invoke<PromptRaw>('update_prompt', { id, prompt: data });
+      const normalized = normalizePrompt(result);
+      setPrompts(prev => prev.map(p => p.id === id ? normalized : p));
+      return normalized;
     } catch (error) {
       console.error('Error updating prompt:', error);
       throw error;
@@ -95,8 +118,8 @@ export function usePrompts() {
   const searchPrompts = useCallback(async (query: string) => {
     try {
       setLoading(true);
-      const result = await invoke<Prompt[]>('search_prompts', { query });
-      setPrompts(result);
+      const result = await invoke<PromptRaw[]>('search_prompts', { query });
+      setPrompts(result.map(normalizePrompt));
     } catch (error) {
       console.error('Error searching prompts:', error);
     } finally {
