@@ -76,7 +76,13 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
         image_path: imagePath || undefined,
       });
     } catch (error) {
-      setSaveError('No se pudo guardar el prompt. Intenta nuevamente.');
+      if (typeof error === 'string') {
+        setSaveError(error);
+      } else if (error instanceof Error) {
+        setSaveError(error.message || 'No se pudo guardar el prompt. Intenta nuevamente.');
+      } else {
+        setSaveError('No se pudo guardar el prompt. Intenta nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }
