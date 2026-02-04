@@ -81,8 +81,14 @@ fn resolve_image_data(
     image_path: Option<&str>,
 ) -> Result<Option<Vec<u8>>, String> {
     if let Some(path) = image_path {
-        let bytes = fs::read(path).map_err(|e| e.to_string())?;
-        return Ok(Some(bytes));
+        match fs::read(path) {
+            Ok(bytes) => return Ok(Some(bytes)),
+            Err(_) => {
+                if image_data.is_some() {
+                    return Ok(image_data);
+                }
+            }
+        }
     }
     Ok(image_data)
 }

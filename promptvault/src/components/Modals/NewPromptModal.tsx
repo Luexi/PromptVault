@@ -24,6 +24,7 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   const [imageFilename, setImageFilename] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -67,12 +68,15 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     setIsLoading(true);
     
     try {
+      setSaveError(null);
       await onSave({
         ...formData,
         image_data: imageData || undefined,
         filename: imageFilename || undefined,
         image_path: imagePath || undefined,
       });
+    } catch (error) {
+      setSaveError('No se pudo guardar el prompt. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -336,6 +340,11 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle bg-bg-primary">
+          {saveError && (
+            <p className="text-sm text-red-600 mr-auto">
+              {saveError}
+            </p>
+          )}
           <button
             type="button"
             onClick={onClose}
