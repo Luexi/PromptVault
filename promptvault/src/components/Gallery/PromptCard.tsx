@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Heart, Image as ImageIcon } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import type { Prompt } from '../../types';
 
 interface PromptCardProps {
@@ -11,6 +12,7 @@ interface PromptCardProps {
 
 export function PromptCard({ prompt, isSelected, onClick, onToggleFavorite }: PromptCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [thumbnailSrc, setThumbnailSrc] = useState<string | null>(null);
 
   const modelColors: Record<string, string> = {
     'Stable Diffusion XL': '#8B5CF6',
@@ -31,6 +33,42 @@ export function PromptCard({ prompt, isSelected, onClick, onToggleFavorite }: Pr
     return text.substring(0, maxLength) + '...';
   };
 
+  useEffect(() => {
+    let isActive = true;
+    const loadThumbnail = async () => {
+      setImageError(false);
+      if (!prompt.thumbnail_path) {
+        setThumbnailSrc(null);
+        return;
+      }
+      if (prompt.thumbnail_path.startsWith('data:')) {
+        setThumbnailSrc(prompt.thumbnail_path);
+        return;
+      }
+      try {
+        const base64 = await invoke<string>('get_image_base64', { path: prompt.thumbnail_path });
+        const ext = prompt.thumbnail_path.split('.').pop()?.toLowerCase();
+        const mime =
+          ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+          ext === 'webp' ? 'image/webp' :
+          ext === 'gif' ? 'image/gif' :
+          'image/png';
+        if (isActive) {
+          setThumbnailSrc(`data:${mime};base64,${base64}`);
+        }
+      } catch (error) {
+        if (isActive) {
+          setImageError(true);
+        }
+      }
+    };
+
+    void loadThumbnail();
+    return () => {
+      isActive = false;
+    };
+  }, [prompt.thumbnail_path]);
+
   return (
     <div
       onClick={onClick}
@@ -42,9 +80,9 @@ export function PromptCard({ prompt, isSelected, onClick, onToggleFavorite }: Pr
     >
       {/* Image Container */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
-        {prompt.thumbnail_path && !imageError ? (
+        {thumbnailSrc && !imageError ? (
           <img
-            src={`data:image/jpeg;base64,${prompt.thumbnail_path}`}
+            src={thumbnailSrc}
             alt={prompt.title}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}

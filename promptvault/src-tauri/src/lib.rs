@@ -37,6 +37,7 @@ pub fn run() {
             commands::get_models,
             commands::copy_to_clipboard,
             commands::open_image_external,
+            commands::get_image_base64,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

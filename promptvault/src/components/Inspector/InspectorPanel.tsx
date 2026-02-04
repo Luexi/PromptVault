@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Copy, Download, Trash2, Image as ImageIcon, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import type { Prompt } from '../../types';
@@ -12,6 +12,7 @@ interface InspectorPanelProps {
 export function InspectorPanel({ prompt, onClose, onDelete }: InspectorPanelProps) {
   const [imageError, setImageError] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -33,6 +34,43 @@ export function InspectorPanel({ prompt, onClose, onDelete }: InspectorPanelProp
     }
   };
 
+  useEffect(() => {
+    let isActive = true;
+    const loadImage = async () => {
+      setImageError(false);
+      const path = prompt.image_path || prompt.thumbnail_path;
+      if (!path) {
+        setImageSrc(null);
+        return;
+      }
+      if (path.startsWith('data:')) {
+        setImageSrc(path);
+        return;
+      }
+      try {
+        const base64 = await invoke<string>('get_image_base64', { path });
+        const ext = path.split('.').pop()?.toLowerCase();
+        const mime =
+          ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+          ext === 'webp' ? 'image/webp' :
+          ext === 'gif' ? 'image/gif' :
+          'image/png';
+        if (isActive) {
+          setImageSrc(`data:${mime};base64,${base64}`);
+        }
+      } catch (error) {
+        if (isActive) {
+          setImageError(true);
+        }
+      }
+    };
+
+    void loadImage();
+    return () => {
+      isActive = false;
+    };
+  }, [prompt.image_path, prompt.thumbnail_path]);
+
   return (
     <aside className="w-[360px] flex-shrink-0 bg-bg-surface border-l border-border-subtle flex flex-col animate-in slide-in-from-right duration-300">
       {/* Header */}
@@ -50,9 +88,9 @@ export function InspectorPanel({ prompt, onClose, onDelete }: InspectorPanelProp
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Image */}
         <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden">
-          {prompt.image_path && !imageError ? (
+          {imageSrc && !imageError ? (
             <img
-              src={`data:image/jpeg;base64,${prompt.thumbnail_path}`}
+              src={imageSrc}
               alt={prompt.title}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}

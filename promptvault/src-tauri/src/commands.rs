@@ -1,8 +1,9 @@
 use crate::db::{NewPrompt, Prompt, UpdatePrompt};
 use crate::AppState;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use image::imageops::FilterType;
 use std::fs;
-use std::path::Path;
+use std::path::{Component, Path};
 use tauri::State;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_shell::ShellExt;
@@ -155,6 +156,26 @@ pub fn create_collection(state: State<AppState>, name: String) -> Result<crate::
 pub fn get_models(state: State<AppState>) -> Result<Vec<crate::db::Model>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     db.get_models().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_image_base64(
+    state: State<AppState>,
+    path: String,
+) -> Result<String, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let data_dir = db.get_data_dir();
+    let rel_path = Path::new(&path);
+
+    if rel_path.is_absolute()
+        || rel_path.components().any(|c| matches!(c, Component::ParentDir))
+    {
+        return Err("invalid path".to_string());
+    }
+
+    let full_path = data_dir.join(rel_path);
+    let bytes = fs::read(&full_path).map_err(|e| e.to_string())?;
+    Ok(BASE64.encode(bytes))
 }
 
 #[tauri::command]
