@@ -1,0 +1,5 @@
+promptvault/node_modules/
+promptvault/dist/
+promptvault/src-tauri/target/
+promptvault/src-tauri/.tauri/
+*.log

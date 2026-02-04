@@ -1,10 +1,10 @@
-use crate::db::{Database, NewPrompt, Prompt, UpdatePrompt};
+use crate::db::{NewPrompt, Prompt, UpdatePrompt};
 use crate::AppState;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use image::imageops::FilterType;
 use std::fs;
-use std::path::Path;
 use tauri::State;
+use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_shell::ShellExt;
 use uuid::Uuid;
 
 #[tauri::command]

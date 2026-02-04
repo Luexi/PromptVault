@@ -29,13 +29,6 @@ export function Sidebar({
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-bg-sidebar border-r border-border-subtle flex flex-col">
-      {/* Traffic Lights */}
-      <div className="h-12 flex items-center px-4 gap-2">
-        <div className="w-3 h-3 rounded-full bg-traffic-red" />
-        <div className="w-3 h-3 rounded-full bg-traffic-yellow" />
-        <div className="w-3 h-3 rounded-full bg-traffic-green" />
-      </div>
-
       {/* Library Section */}
       <div className="px-3 py-2">
         <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">

@@ -7,6 +7,8 @@ interface FilterTabsProps {
 
 const filters = [
   { id: null, label: 'All', icon: Image },
+  { id: 'Gemini', label: 'Gemini', icon: Sparkles },
+  { id: 'Chat GPT', label: 'Chat GPT', icon: Bot },
   { id: 'Midjourney V6', label: 'Midjourney', icon: Sparkles },
   { id: 'DALL-E 3', label: 'DALL-E 3', icon: Palette },
   { id: 'Stable Diffusion XL', label: 'Stable Diffusion', icon: Zap },

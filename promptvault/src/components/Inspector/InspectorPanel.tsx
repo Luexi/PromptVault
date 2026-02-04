@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Copy, Download, Trash2, Heart, Image as ImageIcon, Check } from 'lucide-react';
+import { X, Copy, Download, Trash2, Image as ImageIcon, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import type { Prompt } from '../../types';
 
@@ -31,11 +31,6 @@ export function InspectorPanel({ prompt, onClose, onDelete }: InspectorPanelProp
         console.error('Error opening image:', error);
       }
     }
-  };
-
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
   };
 
   return (

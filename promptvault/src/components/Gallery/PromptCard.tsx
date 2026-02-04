@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
+import { Heart, Image as ImageIcon } from 'lucide-react';
 import type { Prompt } from '../../types';
 
 interface PromptCardProps {
@@ -16,6 +16,8 @@ export function PromptCard({ prompt, isSelected, onClick, onToggleFavorite }: Pr
     'Stable Diffusion XL': '#8B5CF6',
     'Midjourney V6': '#10B981',
     'DALL-E 3': '#F59E0B',
+    'Gemini': '#22C55E',
+    'Chat GPT': '#0EA5E9',
     'Flux Pro': '#3B82F6',
     'Flux.1': '#6366F1',
     'Leonardo AI': '#EC4899',

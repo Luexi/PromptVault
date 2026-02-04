@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { X, Upload, Loader2 } from 'lucide-react';
 import type { Collection, NewPrompt } from '../../types';
 
 interface NewPromptModalProps {
@@ -15,10 +15,6 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     negative_prompt: '',
     model: 'Stable Diffusion XL',
     dimensions: '1:1',
-    steps: 30,
-    sampler: 'DPM++ 2M Karras',
-    cfg_scale: 7,
-    seed: '',
     tags: [],
     collection_id: undefined,
   });
@@ -93,6 +89,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   };
 
   const models = [
+    'Gemini',
+    'Chat GPT',
     'Stable Diffusion XL',
     'Midjourney V6',
     'DALL-E 3',
@@ -241,77 +239,20 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
                 />
               </div>
 
-              {/* Settings Grid */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Dimensions
-                  </label>
-                  <select
-                    value={formData.dimensions}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dimensions: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all appearance-none cursor-pointer"
-                  >
-                    {dimensions.map(dim => (
-                      <option key={dim} value={dim}>{dim}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Steps
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.steps || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, steps: parseInt(e.target.value) || undefined }))}
-                    className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all"
-                    placeholder="30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    CFG Scale
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.cfg_scale || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cfg_scale: parseFloat(e.target.value) || undefined }))}
-                    className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all"
-                    placeholder="7"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Sampler
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sampler || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sampler: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all"
-                    placeholder="DPM++ 2M Karras"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Seed
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.seed || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, seed: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all"
-                    placeholder="Random"
-                  />
-                </div>
+              {/* Dimensions */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Dimensions
+                </label>
+                <select
+                  value={formData.dimensions}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dimensions: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-bg-primary border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue transition-all appearance-none cursor-pointer"
+                >
+                  {dimensions.map(dim => (
+                    <option key={dim} value={dim}>{dim}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Collection */}

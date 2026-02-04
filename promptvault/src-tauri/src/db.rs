@@ -1,4 +1,5 @@
 use rusqlite::{Connection, Result, params};
+use rusqlite::types::Value;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -79,11 +80,12 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(app_handle: &tauri::AppHandle) -> Result<Self> {
-        let data_dir = app_handle
-            .path()
-            .app_data_dir()
-            .expect("failed to get app data dir");
+    pub fn new(app_handle: &tauri::AppHandle) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+        let data_dir = if let Ok(doc_dir) = app_handle.path().document_dir() {
+            doc_dir.join("PromptVault")
+        } else {
+            app_handle.path().app_data_dir()?
+        };
         
         fs::create_dir_all(&data_dir)?;
         fs::create_dir_all(data_dir.join("images"))?;
@@ -147,6 +149,8 @@ impl Database {
 
     fn insert_default_data(&self) -> Result<()> {
         let models = [
+            ("Gemini", "Gemini"),
+            ("Chat GPT", "GPT"),
             ("Stable Diffusion XL", "SDXL"),
             ("Midjourney V6", "MJ"),
             ("DALL-E 3", "DALL-E"),
@@ -167,16 +171,16 @@ impl Database {
 
     pub fn get_all_prompts(&self, filter: Option<&str>, collection_id: Option<i32>) -> Result<Vec<Prompt>> {
         let mut sql = "SELECT * FROM prompts WHERE 1=1".to_string();
-        let mut params: Vec<&dyn rusqlite::ToSql> = Vec::new();
+        let mut params: Vec<Value> = Vec::new();
 
         if let Some(model) = filter {
             sql.push_str(" AND model = ?");
-            params.push(&model);
+            params.push(Value::from(model.to_string()));
         }
 
         if let Some(coll_id) = collection_id {
             sql.push_str(" AND collection_id = ?");
-            params.push(&coll_id);
+            params.push(Value::from(coll_id));
         }
 
         sql.push_str(" ORDER BY created_at DESC");
