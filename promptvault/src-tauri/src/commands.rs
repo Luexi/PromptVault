@@ -87,22 +87,22 @@ fn resolve_image_data(
     Ok(image_data)
 }
 
-fn resolve_image_extension(filename: Option<&str>, image_path: Option<&str>) -> &str {
+fn resolve_image_extension(filename: Option<&str>, image_path: Option<&str>) -> String {
     if let Some(name) = filename {
         if let Some(ext) = name.split('.').last() {
             if !ext.is_empty() {
-                return ext;
+                return ext.to_string();
             }
         }
     }
     if let Some(path) = image_path {
         if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
             if !ext.is_empty() {
-                return ext;
+                return ext.to_string();
             }
         }
     }
-    "png"
+    "png".to_string()
 }
 
 #[tauri::command]
