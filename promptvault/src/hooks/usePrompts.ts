@@ -52,7 +52,7 @@ export function usePrompts() {
     }
   }, []);
 
-  const createPrompt = useCallback(async (data: NewPrompt & { image_data?: number[]; filename?: string }) => {
+  const createPrompt = useCallback(async (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string }) => {
     try {
       const result = await invoke<PromptRaw>('create_prompt', {
         prompt: {
@@ -70,6 +70,7 @@ export function usePrompts() {
         },
         image_data: data.image_data || null,
         filename: data.filename || null,
+        image_path: data.image_path || null,
       });
       const normalized = normalizePrompt(result);
       setPrompts(prev => [normalized, ...prev]);

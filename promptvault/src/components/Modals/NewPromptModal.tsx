@@ -5,7 +5,7 @@ import type { Collection, NewPrompt } from '../../types';
 interface NewPromptModalProps {
   collections: Collection[];
   onClose: () => void;
-  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string }) => void;
+  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string }) => void;
 }
 
 export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalProps) {
@@ -20,6 +20,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [imageData, setImageData] = useState<number[] | null>(null);
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [imageFilename, setImageFilename] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -42,6 +44,10 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   }, []);
 
   const handleImageFile = (file: File) => {
+    const filePath = (file as File & { path?: string }).path;
+    setImagePath(filePath || null);
+    setImageFilename(file.name || null);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreviewImage(e.target?.result as string);
@@ -64,7 +70,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
       await onSave({
         ...formData,
         image_data: imageData || undefined,
-        filename: previewImage ? 'image.png' : undefined,
+        filename: imageFilename || undefined,
+        image_path: imagePath || undefined,
       });
     } finally {
       setIsLoading(false);
@@ -147,6 +154,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
                     onClick={() => {
                       setPreviewImage(null);
                       setImageData(null);
+                      setImagePath(null);
+                      setImageFilename(null);
                     }}
                     className="absolute top-2 right-2 p-2 bg-white rounded-lg shadow-soft hover:bg-red-50 text-text-secondary hover:text-red-500 transition-colors"
                   >

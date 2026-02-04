@@ -2,6 +2,7 @@ use crate::db::{NewPrompt, Prompt, UpdatePrompt};
 use crate::AppState;
 use image::imageops::FilterType;
 use std::fs;
+use std::path::Path;
 use tauri::State;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_shell::ShellExt;
@@ -30,15 +31,13 @@ pub fn create_prompt(
     prompt: NewPrompt,
     image_data: Option<Vec<u8>>,
     filename: Option<String>,
+    image_path: Option<String>,
 ) -> Result<Prompt, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let data_dir = db.get_data_dir().clone();
 
-    let (image_path, thumbnail_path) = if let Some(data) = image_data {
-        let ext = filename
-            .as_ref()
-            .and_then(|f| f.split('.').last())
-            .unwrap_or("png");
+    let (image_path, thumbnail_path) = if let Some(data) = resolve_image_data(image_data, image_path.as_deref())? {
+        let ext = resolve_image_extension(filename.as_deref(), image_path.as_deref());
         let uuid = Uuid::new_v4().to_string();
         let now = chrono::Local::now();
         let month_dir = now.format("%Y-%m").to_string();
@@ -75,6 +74,35 @@ pub fn create_prompt(
 
     db.create_prompt(&prompt, image_path.as_deref(), thumbnail_path.as_deref())
         .map_err(|e| e.to_string())
+}
+
+fn resolve_image_data(
+    image_data: Option<Vec<u8>>,
+    image_path: Option<&str>,
+) -> Result<Option<Vec<u8>>, String> {
+    if let Some(path) = image_path {
+        let bytes = fs::read(path).map_err(|e| e.to_string())?;
+        return Ok(Some(bytes));
+    }
+    Ok(image_data)
+}
+
+fn resolve_image_extension(filename: Option<&str>, image_path: Option<&str>) -> &str {
+    if let Some(name) = filename {
+        if let Some(ext) = name.split('.').last() {
+            if !ext.is_empty() {
+                return ext;
+            }
+        }
+    }
+    if let Some(path) = image_path {
+        if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
+            if !ext.is_empty() {
+                return ext;
+            }
+        }
+    }
+    "png"
 }
 
 #[tauri::command]
