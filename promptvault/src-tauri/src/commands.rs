@@ -33,12 +33,21 @@ pub fn create_prompt(
     image_data: Option<Vec<u8>>,
     filename: Option<String>,
     image_path: Option<String>,
+    image_base64: Option<String>,
 ) -> Result<Prompt, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let data_dir = db.get_data_dir().clone();
 
-    let (image_path, thumbnail_path) = if let Some(data) = resolve_image_data(image_data, image_path.as_deref())? {
-        let ext = resolve_image_extension(filename.as_deref(), image_path.as_deref());
+    let (image_path, thumbnail_path) = if let Some(data) = resolve_image_data(
+        image_data,
+        image_path.as_deref(),
+        image_base64.as_deref(),
+    )? {
+        let ext = resolve_image_extension(
+            filename.as_deref(),
+            image_path.as_deref(),
+            image_base64.as_deref(),
+        );
         let uuid = Uuid::new_v4().to_string();
         let now = chrono::Local::now();
         let month_dir = now.format("%Y-%m").to_string();
@@ -80,6 +89,7 @@ pub fn create_prompt(
 fn resolve_image_data(
     image_data: Option<Vec<u8>>,
     image_path: Option<&str>,
+    image_base64: Option<&str>,
 ) -> Result<Option<Vec<u8>>, String> {
     if let Some(path) = image_path {
         match fs::read(path) {
@@ -91,10 +101,28 @@ fn resolve_image_data(
             }
         }
     }
+    if let Some(data_url) = image_base64 {
+        let encoded = data_url
+            .split_once(',')
+            .map(|(_, b64)| b64)
+            .unwrap_or(data_url);
+        match BASE64.decode(encoded) {
+            Ok(bytes) => return Ok(Some(bytes)),
+            Err(_) => {
+                if image_data.is_some() {
+                    return Ok(image_data);
+                }
+            }
+        }
+    }
     Ok(image_data)
 }
 
-fn resolve_image_extension(filename: Option<&str>, image_path: Option<&str>) -> String {
+fn resolve_image_extension(
+    filename: Option<&str>,
+    image_path: Option<&str>,
+    image_base64: Option<&str>,
+) -> String {
     if let Some(name) = filename {
         if let Some(ext) = name.split('.').last() {
             if !ext.is_empty() {
@@ -107,6 +135,21 @@ fn resolve_image_extension(filename: Option<&str>, image_path: Option<&str>) -> 
             if !ext.is_empty() {
                 return ext.to_string();
             }
+        }
+    }
+    if let Some(data_url) = image_base64 {
+        if let Some(mime) = data_url.strip_prefix("data:").and_then(|v| v.split(';').next()) {
+            return match mime {
+                "image/jpeg" => "jpg",
+                "image/jpg" => "jpg",
+                "image/png" => "png",
+                "image/webp" => "webp",
+                "image/gif" => "gif",
+                "image/bmp" => "bmp",
+                "image/tiff" => "tiff",
+                _ => "png",
+            }
+            .to_string();
         }
     }
     "png".to_string()

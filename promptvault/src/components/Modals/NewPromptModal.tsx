@@ -5,7 +5,7 @@ import type { Collection, NewPrompt } from '../../types';
 interface NewPromptModalProps {
   collections: Collection[];
   onClose: () => void;
-  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string }) => void;
+  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string; image_base64?: string }) => void;
 }
 
 export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalProps) {
@@ -74,6 +74,7 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
         image_data: imageData || undefined,
         filename: imageFilename || undefined,
         image_path: imagePath || undefined,
+        image_base64: previewImage || undefined,
       });
     } catch (error) {
       if (typeof error === 'string') {
