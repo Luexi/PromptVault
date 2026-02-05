@@ -1,11 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
 import type { Collection, NewPrompt } from '../../types';
+import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 
 interface NewPromptModalProps {
   collections: Collection[];
   onClose: () => void;
-  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string; image_base64?: string }) => void;
+  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string; image_base64?: string; has_image?: boolean }) => void;
 }
 
 export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalProps) {
@@ -18,7 +20,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     tags: [],
     collection_id: undefined,
   });
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [imageData, setImageData] = useState<number[] | null>(null);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imageFilename, setImageFilename] = useState<string | null>(null);
@@ -26,6 +29,7 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -51,7 +55,9 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      setPreviewImage(e.target?.result as string);
+      const dataUrl = e.target?.result as string;
+      setPreviewSrc(dataUrl);
+      setPreviewDataUrl(dataUrl);
     };
     reader.readAsDataURL(file);
 
@@ -63,18 +69,41 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     arrayReader.readAsArrayBuffer(file);
   };
 
+  const handleBrowse = useCallback(async () => {
+    // Prefer native dialog on Tauri to avoid sending big payloads over IPC.
+    if (isTauri()) {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'svg'] }],
+      });
+      if (typeof selected === 'string' && selected.length > 0) {
+        setImagePath(selected);
+        const name = selected.split(/[/\\\\]/).pop() || null;
+        setImageFilename(name);
+        setImageData(null);
+        setPreviewDataUrl(null);
+        setPreviewSrc(convertFileSrc(selected));
+      }
+      return;
+    }
+
+    fileInputRef.current?.click();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       setSaveError(null);
+      const hasImage = !!previewSrc;
       await onSave({
         ...formData,
         image_data: imageData || undefined,
         filename: imageFilename || undefined,
         image_path: imagePath || undefined,
-        image_base64: previewImage || undefined,
+        image_base64: previewDataUrl || undefined,
+        has_image: hasImage,
       });
     } catch (error) {
       if (typeof error === 'string') {
@@ -148,22 +177,23 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
               className={`h-full min-h-[400px] rounded-2xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center ${
                 isDragging
                   ? 'border-accent-blue bg-accent-blue/5'
-                  : previewImage
+                  : previewSrc
                   ? 'border-transparent'
                   : 'border-border-subtle hover:border-text-muted bg-bg-primary'
               }`}
             >
-              {previewImage ? (
+              {previewSrc ? (
                 <div className="relative w-full h-full">
                   <img
-                    src={previewImage}
+                    src={previewSrc}
                     alt="Preview"
                     className="w-full h-full object-contain rounded-xl"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      setPreviewImage(null);
+                      setPreviewSrc(null);
+                      setPreviewDataUrl(null);
                       setImageData(null);
                       setImagePath(null);
                       setImageFilename(null);
@@ -174,7 +204,11 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center cursor-pointer p-8">
+                <button
+                  type="button"
+                  onClick={handleBrowse}
+                  className="flex flex-col items-center cursor-pointer p-8"
+                >
                   <div className="w-16 h-16 rounded-2xl bg-bg-primary border border-border-subtle flex items-center justify-center mb-4">
                     <Upload className="w-6 h-6 text-text-muted" />
                   </div>
@@ -189,8 +223,9 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
                     accept="image/*"
                     onChange={handleFileSelect}
                     className="hidden"
+                    ref={fileInputRef}
                   />
-                </label>
+                </button>
               )}
             </div>
           </div>

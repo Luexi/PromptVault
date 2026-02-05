@@ -34,6 +34,7 @@ pub fn create_prompt(
     filename: Option<String>,
     image_path: Option<String>,
     image_base64: Option<String>,
+    has_image: Option<bool>,
 ) -> Result<Prompt, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let data_dir = db.get_data_dir().clone();
@@ -90,6 +91,9 @@ pub fn create_prompt(
 
         (Some(image_rel_path), Some(thumbnail_rel_path))
     } else {
+        if has_image.unwrap_or(false) {
+            return Err("No se recibieron datos de imagen. Usa 'Browse' para seleccionar la imagen.".to_string());
+        }
         (None, None)
     };
 
