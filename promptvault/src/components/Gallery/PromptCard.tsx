@@ -52,6 +52,7 @@ export function PromptCard({ prompt, isSelected, onClick, onToggleFavorite }: Pr
           ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
           ext === 'webp' ? 'image/webp' :
           ext === 'gif' ? 'image/gif' :
+          ext === 'svg' ? 'image/svg+xml' :
           'image/png';
         if (isActive) {
           setThumbnailSrc(`data:${mime};base64,${base64}`);

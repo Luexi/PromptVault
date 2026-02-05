@@ -54,6 +54,7 @@ export function InspectorPanel({ prompt, onClose, onDelete }: InspectorPanelProp
           ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
           ext === 'webp' ? 'image/webp' :
           ext === 'gif' ? 'image/gif' :
+          ext === 'svg' ? 'image/svg+xml' :
           'image/png';
         if (isActive) {
           setImageSrc(`data:${mime};base64,${base64}`);

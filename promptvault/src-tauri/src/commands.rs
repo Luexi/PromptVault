@@ -64,18 +64,29 @@ pub fn create_prompt(
         fs::write(&image_path_full, &data).map_err(|e| e.to_string())?;
 
         // Create thumbnail
-        let thumbnail_filename = format!("{}_thumb.{}", uuid, ext);
-        let thumbnail_path_full = thumbnails_dir.join(&thumbnail_filename);
-
-        if let Ok(img) = image::load_from_memory(&data) {
-            let thumbnail = img.resize(300, 300, FilterType::Lanczos3);
-            thumbnail
-                .save(&thumbnail_path_full)
-                .map_err(|e| e.to_string())?;
-        }
-
         let image_rel_path = format!("images/{}/{}", month_dir, image_filename);
-        let thumbnail_rel_path = format!("thumbnails/{}", thumbnail_filename);
+
+        let thumbnail_rel_path = if ext.eq_ignore_ascii_case("svg") {
+            // The `image` crate doesn't decode SVG. Reuse the original for preview.
+            image_rel_path.clone()
+        } else {
+            let thumbnail_filename = format!("{}_thumb.{}", uuid, ext);
+            let thumbnail_path_full = thumbnails_dir.join(&thumbnail_filename);
+            match image::load_from_memory(&data) {
+                Ok(img) => {
+                    let thumbnail = img.resize(300, 300, FilterType::Lanczos3);
+                    thumbnail
+                        .save(&thumbnail_path_full)
+                        .map_err(|e| e.to_string())?;
+                    format!("thumbnails/{}", thumbnail_filename)
+                }
+                Err(_) => {
+                    // Fallback: if we can't decode the image for thumbnail generation,
+                    // still show something in the UI.
+                    image_rel_path.clone()
+                }
+            }
+        };
 
         (Some(image_rel_path), Some(thumbnail_rel_path))
     } else {
@@ -102,16 +113,29 @@ fn resolve_image_data(
         }
     }
     if let Some(data_url) = image_base64 {
-        let encoded = data_url
-            .split_once(',')
-            .map(|(_, b64)| b64)
-            .unwrap_or(data_url);
-        match BASE64.decode(encoded) {
-            Ok(bytes) => return Ok(Some(bytes)),
-            Err(_) => {
-                if image_data.is_some() {
-                    return Ok(image_data);
+        // Supports both:
+        // - data:<mime>;base64,<...>
+        // - data:<mime>,<percent-encoded bytes> (common for SVG)
+        if let Some((meta, data)) = data_url.split_once(',') {
+            if meta.contains(";base64") {
+                match BASE64.decode(data) {
+                    Ok(bytes) => return Ok(Some(bytes)),
+                    Err(_) => {
+                        if image_data.is_some() {
+                            return Ok(image_data);
+                        }
+                    }
                 }
+            } else {
+                let decoded = percent_decode(data.as_bytes());
+                if !decoded.is_empty() {
+                    return Ok(Some(decoded));
+                }
+            }
+        } else {
+            // If the string is raw base64 without a data URL prefix.
+            if let Ok(bytes) = BASE64.decode(data_url) {
+                return Ok(Some(bytes));
             }
         }
     }
@@ -147,12 +171,52 @@ fn resolve_image_extension(
                 "image/gif" => "gif",
                 "image/bmp" => "bmp",
                 "image/tiff" => "tiff",
+                "image/svg+xml" => "svg",
                 _ => "png",
             }
             .to_string();
         }
     }
     "png".to_string()
+}
+
+fn percent_decode(input: &[u8]) -> Vec<u8> {
+    // Minimal percent-decoder for data URLs (ASCII/UTF-8). Also converts '+' to space.
+    let mut out = Vec::with_capacity(input.len());
+    let mut i = 0;
+    while i < input.len() {
+        match input[i] {
+            b'%' if i + 2 < input.len() => {
+                let h1 = from_hex(input[i + 1]);
+                let h2 = from_hex(input[i + 2]);
+                if let (Some(h1), Some(h2)) = (h1, h2) {
+                    out.push((h1 << 4) | h2);
+                    i += 3;
+                    continue;
+                }
+                out.push(input[i]);
+                i += 1;
+            }
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
+fn from_hex(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }
 
 #[tauri::command]
