@@ -52,7 +52,7 @@ export function usePrompts() {
     }
   }, []);
 
-  const createPrompt = useCallback(async (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string; image_base64?: string; has_image?: boolean }) => {
+  const createPrompt = useCallback(async (data: NewPrompt & { image_data?: Uint8Array; filename?: string; image_path?: string; image_base64?: string; has_image?: boolean }) => {
     try {
       const result = await invoke<PromptRaw>('create_prompt', {
         prompt: {

@@ -7,7 +7,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 interface NewPromptModalProps {
   collections: Collection[];
   onClose: () => void;
-  onSave: (data: NewPrompt & { image_data?: number[]; filename?: string; image_path?: string; image_base64?: string; has_image?: boolean }) => void;
+  onSave: (data: NewPrompt & { image_data?: Uint8Array; filename?: string; image_path?: string; image_base64?: string; has_image?: boolean }) => void;
 }
 
 export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalProps) {
@@ -22,7 +22,7 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   });
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<number[] | null>(null);
+  const [imageData, setImageData] = useState<Uint8Array | null>(null);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imageFilename, setImageFilename] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -64,7 +64,8 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     const arrayReader = new FileReader();
     arrayReader.onload = (e) => {
       const arrayBuffer = e.target?.result as ArrayBuffer;
-      setImageData(Array.from(new Uint8Array(arrayBuffer)));
+      // Pass binary efficiently over IPC (Tauri supports Uint8Array -> Vec<u8>).
+      setImageData(new Uint8Array(arrayBuffer));
     };
     arrayReader.readAsArrayBuffer(file);
   };
@@ -96,7 +97,7 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     
     try {
       setSaveError(null);
-      const hasImage = !!previewSrc;
+      const hasImage = !!imagePath || !!imageData || !!previewDataUrl || !!previewSrc;
       await onSave({
         ...formData,
         image_data: imageData || undefined,

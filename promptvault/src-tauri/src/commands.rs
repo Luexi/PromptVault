@@ -107,8 +107,13 @@ fn resolve_image_data(
     image_base64: Option<&str>,
 ) -> Result<Option<Vec<u8>>, String> {
     if let Some(path) = image_path {
+        let normalized = normalize_fs_path(path);
         match fs::read(path) {
             Ok(bytes) => return Ok(Some(bytes)),
+            Err(_) if normalized.as_deref() != Some(path) => match fs::read(normalized.as_deref().unwrap_or(path)) {
+                Ok(bytes) => return Ok(Some(bytes)),
+                Err(_) => {}
+            },
             Err(_) => {
                 if image_data.is_some() {
                     return Ok(image_data);
@@ -144,6 +149,17 @@ fn resolve_image_data(
         }
     }
     Ok(image_data)
+}
+
+fn normalize_fs_path(path: &str) -> Option<String> {
+    let p = path.trim();
+    if let Some(rest) = p.strip_prefix("file://") {
+        // Common when a frontend passes a file URL instead of a plain path.
+        // file:///C:/... or file://C:/...
+        let rest = rest.strip_prefix('/').unwrap_or(rest);
+        return Some(rest.replace('/', "\\"));
+    }
+    None
 }
 
 fn resolve_image_extension(
