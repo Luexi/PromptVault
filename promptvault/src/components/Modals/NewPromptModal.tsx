@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
 import type { Collection, NewPrompt } from '../../types';
-import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
 
 interface NewPromptModalProps {
   collections: Collection[];
@@ -49,8 +47,10 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
   }, []);
 
   const handleImageFile = (file: File) => {
+    // The browser file picker does not provide real filesystem paths (usually `C:\fakepath\...`).
+    // We store bytes + data URL and let the backend persist the image.
     const filePath = (file as File & { path?: string }).path;
-    setImagePath(filePath || null);
+    setImagePath(filePath && !filePath.toLowerCase().includes('fakepath') ? filePath : null);
     setImageFilename(file.name || null);
 
     const reader = new FileReader();
@@ -70,24 +70,9 @@ export function NewPromptModal({ collections, onClose, onSave }: NewPromptModalP
     arrayReader.readAsArrayBuffer(file);
   };
 
-  const handleBrowse = useCallback(async () => {
-    // Prefer native dialog on Tauri to avoid sending big payloads over IPC.
-    if (isTauri()) {
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'svg'] }],
-      });
-      if (typeof selected === 'string' && selected.length > 0) {
-        setImagePath(selected);
-        const name = selected.split(/[/\\\\]/).pop() || null;
-        setImageFilename(name);
-        setImageData(null);
-        setPreviewDataUrl(null);
-        setPreviewSrc(convertFileSrc(selected));
-      }
-      return;
-    }
-
+  const handleBrowse = useCallback(() => {
+    // Use the browser file picker so we can always read bytes + show a preview.
+    // (Paths are not reliable from <input type="file"> on Windows.)
     fileInputRef.current?.click();
   }, []);
 

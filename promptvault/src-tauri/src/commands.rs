@@ -39,6 +39,11 @@ pub fn create_prompt(
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let data_dir = db.get_data_dir().clone();
 
+    let expects_image = has_image.unwrap_or(false)
+        || image_data.is_some()
+        || image_path.as_deref().is_some_and(|p| !p.is_empty())
+        || image_base64.as_deref().is_some_and(|p| !p.is_empty());
+
     let (image_path, thumbnail_path) = if let Some(data) = resolve_image_data(
         image_data,
         image_path.as_deref(),
@@ -91,8 +96,8 @@ pub fn create_prompt(
 
         (Some(image_rel_path), Some(thumbnail_rel_path))
     } else {
-        if has_image.unwrap_or(false) {
-            return Err("No se recibieron datos de imagen. Usa 'Browse' para seleccionar la imagen.".to_string());
+        if expects_image {
+            return Err("No se recibieron datos de imagen. Vuelve a seleccionar el archivo e intenta de nuevo.".to_string());
         }
         (None, None)
     };
@@ -106,20 +111,9 @@ fn resolve_image_data(
     image_path: Option<&str>,
     image_base64: Option<&str>,
 ) -> Result<Option<Vec<u8>>, String> {
-    if let Some(path) = image_path {
-        let normalized = normalize_fs_path(path);
-        match fs::read(path) {
-            Ok(bytes) => return Ok(Some(bytes)),
-            Err(_) if normalized.as_deref() != Some(path) => match fs::read(normalized.as_deref().unwrap_or(path)) {
-                Ok(bytes) => return Ok(Some(bytes)),
-                Err(_) => {}
-            },
-            Err(_) => {
-                if image_data.is_some() {
-                    return Ok(image_data);
-                }
-            }
-        }
+    // Prefer bytes sent over IPC (most reliable) over trying to read a client-provided path.
+    if image_data.is_some() {
+        return Ok(image_data);
     }
     if let Some(data_url) = image_base64 {
         // Supports both:
@@ -148,7 +142,20 @@ fn resolve_image_data(
             }
         }
     }
-    Ok(image_data)
+    if let Some(path) = image_path {
+        let normalized = normalize_fs_path(path);
+        if let Ok(bytes) = fs::read(path) {
+            return Ok(Some(bytes));
+        }
+        if let Some(p) = normalized.as_deref() {
+            if p != path {
+                if let Ok(bytes) = fs::read(p) {
+                    return Ok(Some(bytes));
+                }
+            }
+        }
+    }
+    Ok(None)
 }
 
 fn normalize_fs_path(path: &str) -> Option<String> {
